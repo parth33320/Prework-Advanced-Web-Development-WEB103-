@@ -1,4 +1,7 @@
 import { chromium } from 'playwright';
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
@@ -10,6 +13,9 @@ async function run() {
   });
 
   const page = await context.newPage();
+
+  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+  page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
 
   // In-memory store for mocked Supabase DB during verification
   let creatorsList = [
@@ -218,8 +224,34 @@ async function run() {
   } catch (err) {
     console.error('Error during Playwright journey:', err);
   } finally {
+    const video = page.video();
+    const videoPath = video ? await video.path() : null;
+
     await context.close();
     await browser.close();
+
+    // After closing browser, Playwright saves the video file.
+    if (videoPath && fs.existsSync(videoPath)) {
+      console.log(`Playwright WebM video saved at: ${videoPath}`);
+      try {
+        const destDir = './verification/videos';
+        const targetWebmPath = path.join(destDir, 'walkthrough.webm');
+        const targetMp4Path = path.join(destDir, 'walkthrough.mp4');
+
+        // Copy or rename the unique file to walkthrough.webm
+        fs.copyFileSync(videoPath, targetWebmPath);
+        console.log(`Copied WebM video to canonical destination: ${targetWebmPath}`);
+
+        // Convert the WebM video to MP4 using ffmpeg
+        console.log('Converting WebM video to MP4 using FFmpeg...');
+        execSync(`ffmpeg -y -i "${targetWebmPath}" -c:v libx264 -pix_fmt yuv420p "${targetMp4Path}"`, { stdio: 'inherit' });
+        console.log(`Successfully converted walkthrough video to MP4: ${targetMp4Path}`);
+      } catch (err) {
+        console.error('Failed to convert video to MP4:', err);
+      }
+    } else {
+      console.log('No video path found or video was not recorded.');
+    }
   }
 }
 
