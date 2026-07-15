@@ -4,7 +4,12 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 async function run() {
-  const browser = await chromium.launch({ headless: true });
+  // 1. Launch with slowMo: 1500
+  const browser = await chromium.launch({
+    headless: true,
+    slowMo: 1500
+  });
+
   const context = await browser.newContext({
     recordVideo: {
       dir: './verification/videos',
@@ -17,138 +22,144 @@ async function run() {
   page.on('console', msg => console.log('PAGE LOG:', msg.text()));
   page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
 
-  // In-memory store for mocked Supabase DB during verification
-  let creatorsList = [
-    {
-      id: 1,
-      name: "Marques Brownlee (MKBHD)",
-      url: "https://www.youtube.com/@mkbhd",
-      description: "One of the world's top tech reviewers, producing extremely high-quality video reviews on smartphones, electric vehicles, and future tech gadgets.",
-      imageURL: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 2,
-      name: "Simone Giertz",
-      url: "https://www.youtube.com/@simonegiertz",
-      description: "A brilliant Swedish inventor, maker, and robotics enthusiast famous for crafting wonderfully useless machines and transforming a Tesla into 'Truckla'.",
-      imageURL: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 3,
-      name: "The Primeagen",
-      url: "https://www.youtube.com/@ThePrimeagen",
-      description: "An energetic and highly entertaining software engineer focused on Neovim, TypeScript, Rust, algorithms, and developer culture memes.",
-      imageURL: "https://images.unsplash.com/photo-1607799279861-4dd421887fb3?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 4,
-      name: "Mark Rober",
-      url: "https://www.youtube.com/@MarkRober",
-      description: "A former NASA and Apple engineer who creates incredibly viral and educational science, engineering, and prank/glitter bomb videos.",
-      imageURL: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 5,
-      name: "Kurzgesagt – In a Nutshell",
-      url: "https://www.youtube.com/@kurzgesagt",
-      description: "An animation studio making beautiful, colorful, bird-themed science videos explaining space, biology, physics, and complex philosophical dilemmas.",
-      imageURL: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80"
-    }
-  ];
-
-  let nextId = 6;
-
-  // Intercept and route Supabase API calls
-  await page.route('**/rest/v1/creators*', async (route, request) => {
-    const method = request.method();
-    const urlString = request.url();
-    const url = new URL(urlString);
-    console.log(`Intercepted API Call: [${method}] ${url.search}`);
-
-    if (method === 'GET') {
-      const selectParam = url.searchParams.get('select');
-      const idEqParam = url.searchParams.get('id');
-
-      if (idEqParam && idEqParam.startsWith('eq.')) {
-        const idToFind = parseInt(idEqParam.replace('eq.', ''), 10);
-        const item = creatorsList.find(c => c.id === idToFind);
-        console.log(`Responding details for id ${idToFind}:`, item);
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(item ? [item] : [])
-        });
-      } else {
-        console.log('Responding with full creators list');
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(creatorsList)
-        });
-      }
-    } else if (method === 'POST') {
-      const body = JSON.parse(request.postData() || '[]');
-      console.log('Inserting new creators:', body);
-      const itemsToAdd = Array.isArray(body) ? body : [body];
-
-      const addedItems = itemsToAdd.map(item => {
-        const newItem = { ...item, id: nextId++ };
-        creatorsList.push(newItem);
-        return newItem;
-      });
-
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify(addedItems)
-      });
-    } else if (method === 'PATCH') {
-      const idEqParam = url.searchParams.get('id');
-      const body = JSON.parse(request.postData() || '{}');
-      console.log(`Updating creator with id param ${idEqParam}:`, body);
-
-      if (idEqParam && idEqParam.startsWith('eq.')) {
-        const idToUpdate = parseInt(idEqParam.replace('eq.', ''), 10);
-        const index = creatorsList.findIndex(c => c.id === idToUpdate);
-        if (index !== -1) {
-          creatorsList[index] = { ...creatorsList[index], ...body };
+  // 2. Inject CSS & JS for custom ripple clicks and DOM overlays
+  await page.addInitScript(() => {
+    // Inject click ripple listener
+    window.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style');
+      style.innerHTML = `
+        @keyframes ripple-effect {
+          0% {
+            transform: scale(0.3);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(2.2);
+            opacity: 0;
+          }
         }
+        .playwright-click-ripple {
+          position: fixed;
+          width: 40px;
+          height: 40px;
+          border: 4px solid #ff4757;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 10000000;
+          animation: ripple-effect 0.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+      `;
+      document.head.appendChild(style);
+    });
+
+    window.addEventListener('click', (e) => {
+      const ripple = document.createElement('div');
+      ripple.className = 'playwright-click-ripple';
+      ripple.style.left = `${e.clientX - 20}px`;
+      ripple.style.top = `${e.clientY - 20}px`;
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 400);
+    }, true);
+
+    // Inject title card overlay helpers
+    window.showTitleCard = (title, subtitle) => {
+      // Remove any existing one first
+      const existing = document.getElementById('title-card-overlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'title-card-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.95)'; // dark slate overlay
+      overlay.style.display = 'flex';
+      overlay.style.flexDirection = 'column';
+      overlay.style.justifyContent = 'center';
+      overlay.style.alignItems = 'center';
+      overlay.style.color = '#fff';
+      overlay.style.zIndex = '9999999';
+      overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.4s ease-in-out';
+
+      const container = document.createElement('div');
+      container.style.textAlign = 'center';
+      container.style.padding = '2rem';
+      container.style.maxWidth = '600px';
+
+      const titleEl = document.createElement('h1');
+      titleEl.innerText = title;
+      titleEl.style.fontSize = '3.5rem';
+      titleEl.style.fontWeight = '800';
+      titleEl.style.marginBottom = '1.5rem';
+      titleEl.style.color = '#3b82f6'; // vibrant blue
+      titleEl.style.letterSpacing = '-0.05em';
+
+      const subEl = document.createElement('h3');
+      subEl.innerText = subtitle;
+      subEl.style.fontSize = '1.5rem';
+      subEl.style.color = '#e2e8f0';
+      subEl.style.lineHeight = '1.6';
+      subEl.style.fontWeight = '400';
+
+      container.appendChild(titleEl);
+      container.appendChild(subEl);
+      overlay.appendChild(container);
+      document.body.appendChild(overlay);
+
+      // Force layout calculation & fade in
+      overlay.getBoundingClientRect();
+      overlay.style.opacity = '1';
+    };
+
+    window.hideTitleCard = () => {
+      const overlay = document.getElementById('title-card-overlay');
+      if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.remove();
+        }, 400);
       }
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([])
-      });
-    } else if (method === 'DELETE') {
-      const idEqParam = url.searchParams.get('id');
-      console.log(`Deleting creator with id param ${idEqParam}`);
-
-      if (idEqParam && idEqParam.startsWith('eq.')) {
-        const idToDelete = parseInt(idEqParam.replace('eq.', ''), 10);
-        creatorsList = creatorsList.filter(c => c.id !== idToDelete);
-      }
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([])
-      });
-    } else {
-      await route.continue();
-    }
+    };
   });
+
+  // Helper function to show a title card for 2.5 seconds
+  async function displayOverlay(title, subtitle) {
+    await page.evaluate(({ t, s }) => {
+      window.showTitleCard(t, s);
+    }, { t: title, s: subtitle });
+    await page.waitForTimeout(2500);
+    await page.evaluate(() => {
+      window.hideTitleCard();
+    });
+    await page.waitForTimeout(500); // Wait for transition fade out
+  }
 
   try {
     console.log('Navigating to http://localhost:3000...');
     await page.goto('http://localhost:3000');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1000);
 
-    // Take screenshot of homepage with auto-seeded cards
+    // --- READ ALL (Homepage) ---
+    await displayOverlay(
+      'CRUD - READ ALL',
+      'Displaying at least five content creators in responsive PicoCSS cards on our homepage'
+    );
+
+    // Take screenshot of homepage
     console.log('Saving screenshot: homepage.png');
     await page.screenshot({ path: './verification/screenshots/homepage.png' });
 
-    console.log('Clicking "View Details" on Marques Brownlee (MKBHD) card...');
+    // --- READ ONE (Details Page) ---
+    await displayOverlay(
+      'CRUD - READ ONE',
+      'Navigating to a unique URL to view detailed information for a single creator'
+    );
+
+    console.log('Clicking "View Details" on the first creator card...');
     const viewButton = page.locator('text=View Details').first();
     await viewButton.click();
     await page.waitForTimeout(1500);
@@ -160,6 +171,12 @@ async function run() {
     console.log('Clicking "Creatorverse" link in nav breadcrumb to go back home...');
     await page.locator('text=Creatorverse').first().click();
     await page.waitForTimeout(1000);
+
+    // --- CREATE (Add Creator Form) ---
+    await displayOverlay(
+      'CRUD - CREATE',
+      'Adding a brand new human to our Creatorverse database using the AddCreator form'
+    );
 
     console.log('Clicking "Add Creator" top nav button...');
     await page.locator('text=Add Creator').first().click();
@@ -183,6 +200,12 @@ async function run() {
     console.log('Saving screenshot: homepage_with_new_creator.png');
     await page.screenshot({ path: './verification/screenshots/homepage_with_new_creator.png' });
 
+    // --- UPDATE (Edit Creator Form) ---
+    await displayOverlay(
+      'CRUD - UPDATE',
+      'Editing the newly created content creator details to update the name'
+    );
+
     console.log('Clicking "Edit" on Matt Pocock\'s card...');
     await page.locator('article:has-text("Matt Pocock") >> text=Edit').first().click();
     await page.waitForTimeout(1500);
@@ -201,6 +224,12 @@ async function run() {
     // Homepage with updated creator name
     console.log('Saving screenshot: homepage_updated.png');
     await page.screenshot({ path: './verification/screenshots/homepage_updated.png' });
+
+    // --- DELETE (Remove Creator) ---
+    await displayOverlay(
+      'CRUD - DELETE',
+      'Permanently removing the content creator from the database using the Delete option'
+    );
 
     console.log('Clicking "Edit" again on updated card to perform delete test...');
     await page.locator('article:has-text("Matt Pocock TS Guru") >> text=Edit').first().click();
