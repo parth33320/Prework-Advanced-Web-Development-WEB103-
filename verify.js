@@ -10,10 +10,12 @@ async function run() {
     slowMo: 1500
   });
 
+  // 2. Configure context with height: 1200 for un-truncated visuals
   const context = await browser.newContext({
+    viewport: { width: 1280, height: 1200 },
     recordVideo: {
       dir: './verification/videos',
-      size: { width: 1280, height: 720 }
+      size: { width: 1280, height: 1200 }
     }
   });
 
@@ -22,7 +24,7 @@ async function run() {
   page.on('console', msg => console.log('PAGE LOG:', msg.text()));
   page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
 
-  // 2. Inject CSS & JS for custom ripple clicks and DOM overlays
+  // 3. Inject CSS & JS for custom ripple clicks and DOM overlays
   await page.addInitScript(() => {
     // Inject click ripple listener
     window.addEventListener('DOMContentLoaded', () => {
@@ -126,12 +128,12 @@ async function run() {
     };
   });
 
-  // Helper function to show a title card for 2.5 seconds
+  // Helper function to show a title card for 3 seconds (3000ms)
   async function displayOverlay(title, subtitle) {
     await page.evaluate(({ t, s }) => {
       window.showTitleCard(t, s);
     }, { t: title, s: subtitle });
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3000); // Exactly 3 seconds
     await page.evaluate(() => {
       window.hideTitleCard();
     });
@@ -161,6 +163,7 @@ async function run() {
 
     console.log('Clicking "View Details" on the first creator card...');
     const viewButton = page.locator('text=View Details').first();
+    await viewButton.scrollIntoViewIfNeeded(); // Scroll before interaction
     await viewButton.click();
     await page.waitForTimeout(1500);
 
@@ -169,7 +172,9 @@ async function run() {
     await page.screenshot({ path: './verification/screenshots/details.png' });
 
     console.log('Clicking "Creatorverse" link in nav breadcrumb to go back home...');
-    await page.locator('text=Creatorverse').first().click();
+    const homeLink = page.locator('text=Creatorverse').first();
+    await homeLink.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await homeLink.click();
     await page.waitForTimeout(1000);
 
     // --- CREATE (Add Creator Form) ---
@@ -179,21 +184,36 @@ async function run() {
     );
 
     console.log('Clicking "Add Creator" top nav button...');
-    await page.locator('text=Add Creator').first().click();
+    const addButton = page.locator('text=Add Creator').first();
+    await addButton.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await addButton.click();
     await page.waitForTimeout(1000);
 
     console.log('Filling in new creator details...');
-    await page.fill('input[name="name"]', 'Matt Pocock');
-    await page.fill('input[name="url"]', 'https://www.youtube.com/@mattpocock');
-    await page.fill('textarea[name="description"]', 'Superb TypeScript tutorials and masterclass skills.');
-    await page.fill('input[name="imageURL"]', 'https://images.unsplash.com/photo-1516116211223-5c359a36298a?auto=format&fit=crop&w=600&q=80');
+    const nameInput = page.locator('input[name="name"]');
+    await nameInput.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await nameInput.fill('Matt Pocock');
+
+    const urlInput = page.locator('input[name="url"]');
+    await urlInput.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await urlInput.fill('https://www.youtube.com/@mattpocock');
+
+    const descInput = page.locator('textarea[name="description"]');
+    await descInput.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await descInput.fill('Superb TypeScript tutorials and masterclass skills.');
+
+    const imgInput = page.locator('input[name="imageURL"]');
+    await imgInput.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await imgInput.fill('https://images.unsplash.com/photo-1516116211223-5c359a36298a?auto=format&fit=crop&w=600&q=80');
     await page.waitForTimeout(1000);
 
     console.log('Saving screenshot: add_form.png');
     await page.screenshot({ path: './verification/screenshots/add_form.png' });
 
     console.log('Submitting form...');
-    await page.click('button[type="submit"]');
+    const submitButton = page.locator('button[type="submit"]');
+    await submitButton.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await submitButton.click();
     await page.waitForTimeout(2000);
 
     // Observe newly added creator card on the homepage
@@ -207,18 +227,22 @@ async function run() {
     );
 
     console.log('Clicking "Edit" on Matt Pocock\'s card...');
-    await page.locator('article:has-text("Matt Pocock") >> text=Edit').first().click();
+    const editCardButton = page.locator('article:has-text("Matt Pocock") >> text=Edit').first();
+    await editCardButton.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await editCardButton.click();
     await page.waitForTimeout(1500);
 
     console.log('Modifying name...');
-    await page.fill('input[name="name"]', 'Matt Pocock TS Guru');
+    await nameInput.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await nameInput.fill('Matt Pocock TS Guru');
     await page.waitForTimeout(1000);
 
     console.log('Saving screenshot: edit_form.png');
     await page.screenshot({ path: './verification/screenshots/edit_form.png' });
 
     console.log('Submitting updates...');
-    await page.click('button[type="submit"]');
+    await submitButton.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await submitButton.click();
     await page.waitForTimeout(2000);
 
     // Homepage with updated creator name
@@ -232,7 +256,9 @@ async function run() {
     );
 
     console.log('Clicking "Edit" again on updated card to perform delete test...');
-    await page.locator('article:has-text("Matt Pocock TS Guru") >> text=Edit').first().click();
+    const editUpdatedButton = page.locator('article:has-text("Matt Pocock TS Guru") >> text=Edit').first();
+    await editUpdatedButton.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await editUpdatedButton.click();
     await page.waitForTimeout(1500);
 
     console.log('Clicking "Delete Creator" and confirming dialog...');
@@ -242,7 +268,9 @@ async function run() {
       await dialog.accept();
     });
 
-    await page.click('button:has-text("Delete Creator")');
+    const deleteButton = page.locator('button:has-text("Delete Creator")');
+    await deleteButton.scrollIntoViewIfNeeded(); // Scroll before interaction
+    await deleteButton.click();
     await page.waitForTimeout(2000);
 
     // Final homepage view (Matt deleted)

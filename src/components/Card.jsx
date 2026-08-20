@@ -32,9 +32,15 @@ export default function Card({ id, name, url, description, imageURL }) {
         <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>{name}</h3>
       </header>
 
-      <p style={{ fontSize: '0.95rem', flexGrow: 1, color: 'var(--pico-muted-color)' }}>
+      <p style={{ fontSize: '0.95rem', flexGrow: 1, color: 'var(--pico-muted-color)', marginBottom: '0.5rem' }}>
         {description}
       </p>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'underline' }}>
+          🌐 Visit Channel
+        </a>
+      </div>
 
       <footer style={{ padding: 0, margin: '1rem 0 0 0', display: 'flex', gap: '0.5rem', background: 'none', border: 'none' }}>
         <Link to={`/view/${id}`} role="button" className="outline" style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem' }}>
