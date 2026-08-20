@@ -52,10 +52,11 @@ describe('ShowCreators Page', () => {
       expect(supabase.from).toHaveBeenCalledWith('creators');
       expect(mockInsert).toHaveBeenCalled();
       expect(screen.getByText('Marques Brownlee')).toBeInTheDocument();
+      expect(screen.getByText('https://www.youtube.com/@mkbhd')).toBeInTheDocument();
     });
   });
 
-  it('renders a list of creators when present in the database', async () => {
+  it('renders a list of creators with explicit URLs when present in the database', async () => {
     const mockCreators = [
       {
         id: 1,
@@ -86,7 +87,9 @@ describe('ShowCreators Page', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Marques Brownlee')).toBeInTheDocument();
+      expect(screen.getByText('https://www.youtube.com/@mkbhd')).toBeInTheDocument();
       expect(screen.getByText('Simone Giertz')).toBeInTheDocument();
+      expect(screen.getByText('https://www.youtube.com/@simonegiertz')).toBeInTheDocument();
       expect(screen.getByText('Quality tech videos and reviews.')).toBeInTheDocument();
     });
   });

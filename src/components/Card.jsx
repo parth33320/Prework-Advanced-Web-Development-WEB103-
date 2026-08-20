@@ -32,6 +32,17 @@ export default function Card({ id, name, url, description, imageURL }) {
         <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>{name}</h3>
       </header>
 
+      <div style={{ margin: '0.5rem 0', wordBreak: 'break-all' }}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: '0.9rem', color: 'var(--pico-primary)', fontWeight: '500', textDecoration: 'underline' }}
+        >
+          {url}
+        </a>
+      </div>
+
       <p style={{ fontSize: '0.95rem', flexGrow: 1, color: 'var(--pico-muted-color)' }}>
         {description}
       </p>

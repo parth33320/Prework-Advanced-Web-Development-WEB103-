@@ -113,9 +113,9 @@ export default function ViewCreator() {
                 target="_blank"
                 rel="noopener noreferrer"
                 role="button"
-                style={{ flex: 1, minWidth: '200px', fontWeight: 'bold' }}
+                style={{ flex: 1, minWidth: '200px', fontWeight: 'bold', wordBreak: 'break-all' }}
               >
-                🌐 Visit Channel
+                🌐 {creator.url}
               </a>
               <Link
                 to={`/edit/${creator.id}`}

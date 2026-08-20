@@ -19,7 +19,7 @@ describe('ViewCreator Page', () => {
     vi.resetAllMocks();
   });
 
-  it('renders loading state, fetches and displays a creator details', async () => {
+  it('renders loading state, fetches and displays a creator details with explicit URL', async () => {
     const mockCreator = {
       id: 1,
       name: 'Marques Brownlee',
@@ -52,8 +52,8 @@ describe('ViewCreator Page', () => {
       expect(screen.getByText('Quality tech videos and reviews.')).toBeInTheDocument();
     });
 
-    // Check external link button
-    const channelLink = screen.getByRole('button', { name: /Visit Channel/i });
+    // Check external link button displaying explicit URL
+    const channelLink = screen.getByRole('button', { name: /https:\/\/www\.youtube\.com\/@mkbhd/i });
     expect(channelLink).toHaveAttribute('href', 'https://www.youtube.com/@mkbhd');
   });
 
