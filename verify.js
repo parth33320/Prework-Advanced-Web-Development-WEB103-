@@ -255,13 +255,19 @@ async function run() {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(1000);
 
+    // Scroll through homepage to showcase all initial creators
+    await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    await page.waitForTimeout(1000);
+
     console.log('Saving screenshot: homepage.png');
     await page.screenshot({ path: './verification/screenshots/homepage.png' });
 
     // --- READ ONE (Details Page) ---
     await displayOverlay(
       'CRUD - READ ONE',
-      'Navigating to a unique URL to view detailed creator info with explicit channel link'
+      'Navigating to a unique URL (/view/:id) to view detailed creator info with explicit channel link'
     );
 
     console.log('Clicking "View Details" on the first creator card...');
@@ -305,6 +311,12 @@ async function run() {
     await submitBtn.click();
     await page.waitForTimeout(2000);
 
+    // Scroll to the new creator on homepage to explicitly show creation
+    console.log('Scrolling to newly created creator on homepage...');
+    const newCreatorCard = page.locator('article:has-text("Matt Pocock")').first();
+    await newCreatorCard.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(2000);
+
     console.log('Saving screenshot: homepage_with_new_creator.png');
     await page.screenshot({ path: './verification/screenshots/homepage_with_new_creator.png' });
 
@@ -333,6 +345,12 @@ async function run() {
     await updateSubmitBtn.click();
     await page.waitForTimeout(2000);
 
+    // Scroll to the updated creator card on homepage to explicitly show updates
+    console.log('Scrolling to updated creator card on homepage...');
+    const updatedCreatorCard = page.locator('article:has-text("Matt Pocock TS Guru")').first();
+    await updatedCreatorCard.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(2000);
+
     console.log('Saving screenshot: homepage_updated.png');
     await page.screenshot({ path: './verification/screenshots/homepage_updated.png' });
 
@@ -358,6 +376,15 @@ async function run() {
     await deleteBtn.scrollIntoViewIfNeeded();
     await deleteBtn.click();
     await page.waitForTimeout(2000);
+
+    // Scroll through homepage to confirm and demonstrate creator deletion
+    console.log('Scrolling through homepage to show creator deletion...');
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    await page.waitForTimeout(1500);
 
     console.log('Saving final screenshot: verification.png');
     await page.screenshot({ path: './verification/screenshots/verification.png' });
