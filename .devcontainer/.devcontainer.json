@@ -1,0 +1,12 @@
+{
+  "name": "Creatorverse Workspace",
+  "image": "://microsoft.com",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+  "postCreateCommand": "rm -rf node_modules package-lock.json && npm install && npx playwright install-deps && npx playwright install chromium",
+  "remoteEnv": {
+    "VITE_SUPABASE_URL": "${localEnv:VITE_SUPABASE_URL}",
+    "VITE_SUPABASE_ANON_KEY": "${localEnv:VITE_SUPABASE_ANON_KEY}"
+  }
+}

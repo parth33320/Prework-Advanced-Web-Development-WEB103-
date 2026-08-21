@@ -85,9 +85,10 @@ async function run() {
       }
     } else if (method === 'POST') {
       const postData = JSON.parse(request.postData() || '{}');
+      const creatorData = Array.isArray(postData) ? postData[0] : postData;
       const newCreator = {
         id: db.length > 0 ? Math.max(...db.map(c => c.id)) + 1 : 1,
-        ...postData
+        ...creatorData
       };
       db.push(newCreator);
       return route.fulfill({
@@ -186,7 +187,7 @@ async function run() {
       overlay.style.zIndex = '9999999';
       overlay.style.fontFamily = 'system-ui, -apple-system, sans-serif';
       overlay.style.opacity = '0';
-      overlay.style.transition = 'opacity 0.2s ease-in-out'; // Adjusted transition duration from 0.4s to 0.2s
+      overlay.style.transition = 'opacity 0.2s ease-in-out';
 
       const container = document.createElement('div');
       container.style.textAlign = 'center';
@@ -223,7 +224,7 @@ async function run() {
         overlay.style.opacity = '0';
         setTimeout(() => {
           overlay.remove();
-        }, 200); // Adjusted timeout duration from 400ms to 200ms
+        }, 200);
       }
     };
   });
@@ -232,7 +233,7 @@ async function run() {
     await page.evaluate(({ t, s }) => {
       window.showTitleCard(t, s);
     }, { t: title, s: subtitle });
-    await page.waitForTimeout(2000); // Adjusted screen time from 3000ms to 2000ms for punchier pacing
+    await page.waitForTimeout(2000);
     await page.evaluate(() => {
       window.hideTitleCard();
     });
@@ -240,8 +241,8 @@ async function run() {
   }
 
   try {
-    console.log('Navigating to http://localhost:3000...');
-    await page.goto('http://localhost:3000');
+    console.log('Navigating to http://localhost:5173...');
+    await page.goto('http://localhost:5173');
     await page.waitForTimeout(1000);
 
     fs.mkdirSync('./verification/screenshots', { recursive: true });
@@ -315,8 +316,14 @@ async function run() {
       'Editing the newly created content creator details to update the name'
     );
 
-    console.log('Clicking "Edit" on Matt Pocock's card...');
-    const editBtn = page.locator('article:has-text("Matt Pocock") >> text=Edit').first();
+    console.log("Waiting for React layout grid to populate...");
+    await page.waitForTimeout(2000);
+
+    console.log(`Clicking "Edit" on Matt Pocock's card...`);
+    const creatorCard = page.locator('article, .creator-card').filter({ hasText: 'Matt Pocock' }).first();
+    await creatorCard.waitFor({ state: 'visible', timeout: 5000 });
+
+    const editBtn = creatorCard.locator('button:has-text("Edit"), a:has-text("Edit")').first();
     await editBtn.scrollIntoViewIfNeeded();
     await editBtn.click();
     await page.waitForTimeout(1500);
@@ -343,8 +350,14 @@ async function run() {
       'Permanently removing the content creator from the database using the Delete option'
     );
 
+    console.log("Waiting for grid alignment refresh...");
+    await page.waitForTimeout(2000);
+
     console.log('Clicking "Edit" again on updated card to perform delete test...');
-    const editDeleteBtn = page.locator('article:has-text("Matt Pocock TS Guru") >> text=Edit').first();
+    const updatedCard = page.locator('article, .creator-card').filter({ hasText: 'Matt Pocock TS Guru' }).first();
+    await updatedCard.waitFor({ state: 'visible', timeout: 5000 });
+
+    const editDeleteBtn = updatedCard.locator('button:has-text("Edit"), a:has-text("Edit")').first();
     await editDeleteBtn.scrollIntoViewIfNeeded();
     await editDeleteBtn.click();
     await page.waitForTimeout(1500);
@@ -360,7 +373,7 @@ async function run() {
     await deleteBtn.click();
     
     // Safety guardrails: Wait for redirection and flush data streams securely
-    await page.waitForURL('http://localhost:3000/');
+    await page.waitForURL('http://localhost:5173/');
     await page.waitForTimeout(2000);
 
     console.log('Saving final screenshot: verification.png');
